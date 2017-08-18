@@ -8,8 +8,10 @@ import org.slf4j.LoggerFactory;
 
 import com.sun.jna.Native;
 import com.sun.jna.platform.win32.User32;
-import com.sun.jna.platform.win32.WinDef.LPARAM;
-import com.sun.jna.platform.win32.WinDef.WPARAM;
+import com.sun.jna.platform.win32.WinDef.DWORD;
+import com.sun.jna.platform.win32.WinDef.WORD;
+import com.sun.jna.platform.win32.WinUser.INPUT;
+import com.sun.jna.platform.win32.WinUser.KEYBDINPUT;
 import com.sun.jna.win32.W32APIOptions;
 
 /**
@@ -25,16 +27,18 @@ public class InputSender {
 	private static final int KEY_RELEASED = 0x0101;
 
 	public static void sendString(HookedApplication application, String data) {
-
 		for (char c : data.toCharArray()) {
-			WPARAM par = new WPARAM(MyUser32.INSTANCE.VkKeyScan(c));
-			MyUser32.INSTANCE.PostMessage(application.getHwnd(), KEY_PRESSED, par, new LPARAM(0));
+			INPUT in = new INPUT();
+			in.input.setType(KEYBDINPUT.class);
+			in.type = new DWORD(1);
+			in.input.ki.wVk = new WORD(MyUser32.INSTANCE.VkKeyScan(c));
+			in.input.ki.dwFlags = new DWORD();
+			DWORD word = new DWORD(1);
 
-			short vkey = MyUser32.INSTANCE.VkKeyScan(c);
-			int oemScan = MyUser32.INSTANCE.MapVirtualKey(vkey & 0xff, 0);
-
-			MyUser32.INSTANCE.PostMessage(application.getHwnd(), KEY_RELEASED, new WPARAM(vkey & 0xff),
-					new LPARAM(0 | (oemScan << 16) | (3 << 31)));
+			User32.INSTANCE.SetForegroundWindow(application.getHwnd());
+			User32.INSTANCE.SendInput(word, new INPUT[] { in }, in.size());
+			in.input.ki.dwFlags = new DWORD(KEYBDINPUT.KEYEVENTF_KEYUP);
+			User32.INSTANCE.SendInput(word, new INPUT[] { in }, in.size());
 
 		}
 		// User32.INSTANCE.SetForegroundWindow(application.getHwnd());
